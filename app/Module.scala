@@ -4,6 +4,6 @@ import service.ActorRefManager
 
 class Module extends AbstractModule with AkkaGuiceSupport {
   override def configure() = {
-    bindTypedActor(ActorRefManager, "manager-actor")
+    bindTypedActor(ActorRefManager.apply(Set.empty), "manager-actor")
   }
 }
