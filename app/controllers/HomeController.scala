@@ -1,21 +1,19 @@
 package controllers
 
 import javax.inject._
-import play.api._
 import play.api.mvc._
 
 import service._
 
 import akka.stream.scaladsl.Source
 import akka.stream.typed.scaladsl.ActorSource
-import akka.actor.typed.ActorSystem
-import scala.concurrent.ExecutionContext
 import akka.actor.typed.ActorRef
 import akka.stream.OverflowStrategy
 
-/** This controller creates an `Action` to handle HTTP requests to the
-  * application's home page.
-  */
+import scala.concurrent.ExecutionContext
+import scala.util.Random
+import scala.concurrent.duration._
+
 @Singleton
 class HomeController @Inject() (
     manager: ActorRef[ActorRefManager.ManagerCommand],
@@ -23,29 +21,20 @@ class HomeController @Inject() (
 )(implicit ec: ExecutionContext)
     extends AbstractController(cc) {
 
-  var count = 0
-
-  /** Create an Action to render an HTML page.
-    *
-    * The configuration in the `routes` file means that this method
-    * will be called when the application receives a `GET` request with
-    * a path of `/`.
-    */
-  def index() = Action { implicit request: Request[AnyContent] =>
+  def index = Action { implicit request: Request[AnyContent] =>
     Ok(views.html.index())
   }
 
-  def get = Action {
-    manager ! ActorRefManager.SendSignal("red")
+  def getSignal = Action {
+    val signalList   = List("red", "yellow", "green")
+    val randomSignal = signalList(Random.nextInt(signalList.length))
+    manager ! ActorRefManager.SendSignal(randomSignal)
     Ok
   }
 
-  def sse() = Action {
+  def sse = Action {
     import play.api.http.ContentTypes
     import play.api.libs.EventSource
-
-    count += 1
-    println(count)
 
     val source: Source[String, ActorRef[String]] =
       ActorSource
@@ -63,9 +52,16 @@ class HomeController @Inject() (
           actorRef
         }
 
+    // for setting "event: signal"
+    implicit def pair[E]: EventSource.EventNameExtractor[E] =
+      EventSource.EventNameExtractor[E](p => Some(("signal")))
+
+    // for keep connection
+    val heartbeat = EventSource.Event("", None, Some("heartbeat"))
     Ok.chunked(
       source
         .via(EventSource.flow)
+        .keepAlive(30.second, () => heartbeat)
     ).as(ContentTypes.EVENT_STREAM)
   }
 }
