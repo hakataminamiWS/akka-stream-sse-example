@@ -16,9 +16,8 @@ val akkaVersion = "2.6.15"
 // Akka dependencies used by Play
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-serialization-jackson" % akkaVersion,
-  "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion
-  // Only if you are using Akka Testkit
-//   "com.typesafe.akka" %% "akka-testkit" % akkaVersion
+  "com.typesafe.akka" %% "akka-stream-typed" % akkaVersion,
+  "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion % Test
 )
 
 // Adds additional packages into Twirl
