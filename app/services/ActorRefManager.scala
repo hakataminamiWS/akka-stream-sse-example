@@ -1,15 +1,15 @@
-package service
-
-import akka.actor.typed.ActorRef
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors
-import play.api.libs.concurrent.ActorModule
-import akka.actor.typed.PostStop
-import akka.actor.typed.PreRestart
+package services
 
 import com.google.inject.Provides
 
-class ActorRefManager private (actors: Set[ActorRef[String]])
+import play.api.libs.concurrent.ActorModule
+
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.PostStop
+import akka.actor.typed.PreRestart
+
+import akka.actor.typed.scaladsl.Behaviors
 
 object ActorRefManager extends ActorModule {
   type Message = ManagerCommand

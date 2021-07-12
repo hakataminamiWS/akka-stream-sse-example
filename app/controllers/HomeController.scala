@@ -1,18 +1,14 @@
 package controllers
 
 import javax.inject._
+
 import play.api.mvc._
 
-import service._
+import services._
 
-import akka.stream.scaladsl.Source
-import akka.stream.typed.scaladsl.ActorSource
 import akka.actor.typed.ActorRef
-import akka.stream.OverflowStrategy
 
 import scala.concurrent.ExecutionContext
-import scala.util.Random
-import scala.concurrent.duration._
 
 @Singleton
 class HomeController @Inject() (
@@ -26,6 +22,8 @@ class HomeController @Inject() (
   }
 
   def getSignal = Action {
+    import scala.util.Random
+
     val signalList   = List("red", "yellow", "green")
     val randomSignal = signalList(Random.nextInt(signalList.length))
     manager ! ActorRefManager.SendSignal(randomSignal)
@@ -34,34 +32,20 @@ class HomeController @Inject() (
 
   def sse = Action {
     import play.api.http.ContentTypes
+
     import play.api.libs.EventSource
 
-    val source: Source[String, ActorRef[String]] =
-      ActorSource
-        .actorRef[String](
-          completionMatcher =
-            PartialFunction.empty, // never complete the stream because of a message
-          failureMatcher =
-            PartialFunction.empty, // never fail the stream because of a message
-          bufferSize = 8,
-          overflowStrategy = OverflowStrategy.dropHead
-        )
-        .mapMaterializedValue { actorRef =>
-          manager ! ActorRefManager.Register(actorRef)
-          actorRef
-        }
-        .watchTermination() { case (actorRef, done) =>
-          done.onComplete { _ =>
-            manager ! ActorRefManager.UnRegister(actorRef)
-          }
-          actorRef
-        }
+    import akka.stream.scaladsl.Source
+
+    import scala.concurrent.duration._
+
+    val source: Source[String, _] = SignalActorSource.apply(manager)
 
     // for setting "event: signal"
     implicit def pair[E]: EventSource.EventNameExtractor[E] =
       EventSource.EventNameExtractor[E](p => Some(("signal")))
 
-    // for keep connection
+    // for keep connection, add "event: heartbeat"
     val heartbeat = EventSource.Event("", None, Some("heartbeat"))
     Ok.chunked(
       source
