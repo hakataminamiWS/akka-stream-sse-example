@@ -10,7 +10,6 @@ import akka.stream.typed.scaladsl.ActorSource
 
 import akka.stream.OverflowStrategy
 
-
 object SignalActorSource {
   def apply(
       manager: ActorRef[ActorRefManager.ManagerCommand]
@@ -24,14 +23,15 @@ object SignalActorSource {
         bufferSize = 1,
         overflowStrategy = OverflowStrategy.dropHead
       )
-      // 
+      //
       .mapMaterializedValue { actorRef =>
         manager ! ActorRefManager.Register(actorRef)
         actorRef
       }
-      // 
+      //
       .watchTermination() { case (actorRef, done) =>
         done.onComplete { _ =>
+          println(s"unRegister on signal ${actorRef}")
           manager ! ActorRefManager.UnRegister(actorRef)
         }
         actorRef

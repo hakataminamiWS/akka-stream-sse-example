@@ -34,11 +34,12 @@ object ActorRefManager extends ActorModule {
               println(s"unRegister $actorRef")
               ActorRefManager(actors - actorRef)
             case SendSignal(signal)   =>
-              println(s"send a signal to all ActorSources ${actors.toString}")
+              println(s"send a signal to all ActorRef ${actors.toString}")
               actors.foreach(_ ! signal)
               Behaviors.same
           }
         )
+        // for debugging of manager actor lifecycle, there is no something to do
         .receiveSignal { signal =>
           signal match {
             case (context, PreRestart) =>
