@@ -46,9 +46,14 @@ class HomeController @Inject() (
           bufferSize = 8,
           overflowStrategy = OverflowStrategy.dropHead
         )
-        .watchTermination() { case (actorRef, done) =>
+        .mapMaterializedValue { actorRef =>
           manager ! ActorRefManager.Register(actorRef)
-          done.onComplete(_ => manager ! ActorRefManager.UnRegister(actorRef))
+          actorRef
+        }
+        .watchTermination() { case (actorRef, done) =>
+          done.onComplete { _ =>
+            manager ! ActorRefManager.UnRegister(actorRef)
+          }
           actorRef
         }
 

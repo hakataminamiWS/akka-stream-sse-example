@@ -4,6 +4,9 @@ import org.scalatestplus.play._
 import org.scalatestplus.play.guice._
 import play.api.test._
 import play.api.test.Helpers._
+import akka.stream.Materializer
+import akka.stream.ActorMaterializer
+import akka.actor.ActorSystem
 
 /** Add your spec here.
   * You can mock out a whole application including requests, plugins etc.
@@ -23,15 +26,18 @@ class HomeControllerSpec
       status(index) mustBe OK
       contentType(index) mustBe Some("text/html")
       contentAsString(index) must {
-        include("red") or
-          include("yellow") or
-          include("green")
+        include("red") or include("yellow") or include("green")
       }
     }
   }
 
   "HomeController GET /sse" should {
     "render SSE data from the application" in {
+
+      implicit val actorSystem = ActorSystem("test")
+      // implicit val materializer = ActorMaterializer()
+      implicit val materializer = Materializer.matFromSystem(actorSystem)
+
       val controller = inject[HomeController]
       val sse        = controller.sse().apply(FakeRequest(GET, "/sse"))
 
