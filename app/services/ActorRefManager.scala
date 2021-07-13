@@ -28,13 +28,13 @@ object ActorRefManager extends ActorModule {
         .receiveMessage[ManagerCommand](msg =>
           msg match {
             case Register(actorRef)   =>
-              println(s"register $actorRef")
+              println(s"receive a message to register $actorRef")
               ActorRefManager(actors + actorRef)
             case UnRegister(actorRef) =>
-              println(s"unRegister $actorRef")
+              println(s"receive a message to unRegister $actorRef")
               ActorRefManager(actors - actorRef)
             case SendSignal(signal)   =>
-              println(s"send a signal to all ActorRef ${actors.toString}")
+              println(s"receive a message to sendSignal to all ActorRef ${actors.toString}")
               actors.foreach(_ ! signal)
               Behaviors.same
           }

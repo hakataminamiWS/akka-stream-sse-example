@@ -24,7 +24,6 @@ class SignalActorSourceSpec
 
   implicit val system = testKit.system
 
-  val probManager = testKit.createTestProbe[ActorRefManager.ManagerCommand]()
   override protected def beforeAll(): Unit = {}
   override protected def afterAll(): Unit = {
     testKit.shutdownTestKit()
@@ -33,7 +32,11 @@ class SignalActorSourceSpec
   }
 
   "SignalActorSource" should {
-    "send Register massage to manager at start" in {
+    "send Register and UnRegister massages to manager in a source lifecycle" in {
+
+      val probManager =
+        testKit.createTestProbe[ActorRefManager.ManagerCommand]()
+
       val ((in, killSwitch), out) = SignalActorSource
         .apply(probManager.ref)
         .viaMat(KillSwitches.single)(Keep.both)
@@ -41,23 +44,8 @@ class SignalActorSourceSpec
         .run()
 
       probManager.expectMessage(ActorRefManager.Register(in))
-
-      killSwitch.shutdown()
-
-    }
-  }
-
-  "SignalActorSource" should {
-    "send UnRegister massage to manager at terminate" in {
-      val ((in, killSwitch), out) = SignalActorSource
-        .apply(probManager.ref)
-        .viaMat(KillSwitches.single)(Keep.both)
-        .toMat(Sink.cancelled)(Keep.both)
-        .run()
-
-      killSwitch.shutdown()
-
       probManager.expectMessage(ActorRefManager.UnRegister(in))
+
     }
   }
 }

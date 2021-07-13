@@ -25,13 +25,14 @@ object SignalActorSource {
       )
       //
       .mapMaterializedValue { actorRef =>
+        println(s"${actorRef} is created")
         manager ! ActorRefManager.Register(actorRef)
         actorRef
       }
       //
       .watchTermination() { case (actorRef, done) =>
         done.onComplete { _ =>
-          println(s"unRegister on signal ${actorRef}")
+          println(s"${actorRef} is terminated")
           manager ! ActorRefManager.UnRegister(actorRef)
         }
         actorRef

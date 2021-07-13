@@ -40,7 +40,6 @@ class ActorRefManagerSpec
       val expectMessageString = "red"
       probeA.expectMessage(expectMessageString)
       probeB.expectMessage(expectMessageString)
-
       probeC.expectNoMessage()
     }
   }

@@ -10,3 +10,8 @@ sbt run
 ```
 
 And open [http://localhost:9000/](http://localhost:9000/)
+
+## How to test
+```bash
+sbt run
+```
