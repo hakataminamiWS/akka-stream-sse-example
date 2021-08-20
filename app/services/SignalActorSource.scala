@@ -10,10 +10,17 @@ import akka.stream.typed.scaladsl.ActorSource
 
 import akka.stream.OverflowStrategy
 
+import play.api.Logger
+
 object SignalActorSource {
+  val logger: Logger = Logger("akka.actor.SignalActorSource")
+
   def apply(
-      manager: ActorRef[ActorRefManager.ManagerCommand]
-  )(implicit ec: ExecutionContext): Source[String, ActorRef[String]] =
+      receptionistManager: ActorRef[
+        ReceptionistManager.ReceptionistManagerCommand
+      ]
+  ): Source[String, ActorRef[String]] = {
+
     ActorSource
       .actorRef[String](
         completionMatcher =
@@ -25,16 +32,23 @@ object SignalActorSource {
       )
       //
       .mapMaterializedValue { actorRef =>
-        println(s"${actorRef} is created")
-        manager ! ActorRefManager.Register(actorRef)
+        logger.debug(s"${actorRef} is created")
+        receptionistManager ! ReceptionistManager.RegisterSourceActorRef(
+          actorRef
+        )
         actorRef
       }
       //
       .watchTermination() { case (actorRef, done) =>
-        done.onComplete { _ =>
-          println(s"${actorRef} is terminated")
-          manager ! ActorRefManager.UnRegister(actorRef)
+        implicit val ec = ExecutionContext.global
+        done.onComplete { case _ =>
+          logger.debug(s"${actorRef} is terminated")
+          receptionistManager ! ReceptionistManager.UnRegisterSourceActorRef(
+            actorRef
+          )
         }
         actorRef
       }
+  }
+
 }

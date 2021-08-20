@@ -7,10 +7,7 @@ import org.scalatest.BeforeAndAfterAll
 
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorRef
-import scala.concurrent.ExecutionContext
 import akka.stream.scaladsl.Sink
-import akka.stream.Materializer
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Keep
 import akka.stream.KillSwitches
 
@@ -18,7 +15,6 @@ class SignalActorSourceSpec
     extends PlaySpec
     with GuiceOneAppPerTest
     with BeforeAndAfterAll {
-  implicit val ec = ExecutionContext.Implicits.global
 
   val testKit = ActorTestKit()
 
@@ -27,25 +23,30 @@ class SignalActorSourceSpec
   override protected def beforeAll(): Unit = {}
   override protected def afterAll(): Unit = {
     testKit.shutdownTestKit()
-    // system.terminate()
-    println("afterAll")
   }
 
-  "SignalActorSource" should {
-    "send Register and UnRegister massages to manager in a source lifecycle" in {
+   "SignalActorSource" should {
+    "send Register and unRegister messages to ReceptionistManager at lifecycle" in {
 
-      val probManager =
-        testKit.createTestProbe[ActorRefManager.ManagerCommand]()
+      val probReceptionistManager =
+        testKit
+          .createTestProbe[ReceptionistManager.ReceptionistManagerCommand]()
 
-      val ((in, killSwitch), out) = SignalActorSource
-        .apply(probManager.ref)
+      val signalActorSource =
+        SignalActorSource.apply(probReceptionistManager.ref)
+
+      implicit val system = testKit.system
+      val (ref, out) = signalActorSource
         .viaMat(KillSwitches.single)(Keep.both)
-        .toMat(Sink.cancelled)(Keep.both)
+        .toMat(Sink.cancelled)(Keep.left)
         .run()
 
-      probManager.expectMessage(ActorRefManager.Register(in))
-      probManager.expectMessage(ActorRefManager.UnRegister(in))
-
+      probReceptionistManager
+        .expectMessage(ReceptionistManager.RegisterSourceActorRef(ref))
+      probReceptionistManager
+        .expectMessage(
+          ReceptionistManager.UnRegisterSourceActorRef(ref)
+        )
     }
   }
 }

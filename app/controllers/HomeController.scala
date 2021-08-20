@@ -9,10 +9,11 @@ import services._
 import akka.actor.typed.ActorRef
 
 import scala.concurrent.ExecutionContext
+import akka.actor.typed.receptionist.Receptionist
 
 @Singleton
 class HomeController @Inject() (
-    manager: ActorRef[ActorRefManager.ManagerCommand],
+    rm: ActorRef[ReceptionistManager.ReceptionistManagerCommand],
     cc: ControllerComponents
 )(implicit ec: ExecutionContext)
     extends AbstractController(cc) {
@@ -26,7 +27,7 @@ class HomeController @Inject() (
 
     val signalList   = List("red", "yellow", "green")
     val randomSignal = signalList(Random.nextInt(signalList.length))
-    manager ! ActorRefManager.SendSignal(randomSignal)
+    rm ! ReceptionistManager.SendSignal(randomSignal)
     Ok
   }
 
@@ -39,7 +40,7 @@ class HomeController @Inject() (
 
     import scala.concurrent.duration._
 
-    val source: Source[String, _] = SignalActorSource.apply(manager)
+    val source: Source[String, _] = SignalActorSource.apply(rm)
 
     // for setting "event: signal"
     implicit def pair[E]: EventSource.EventNameExtractor[E] =

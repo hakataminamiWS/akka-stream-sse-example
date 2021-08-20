@@ -13,3 +13,4 @@ target
 /.bloop
 .scalafmt.conf
 .env
+project

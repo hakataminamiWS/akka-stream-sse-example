@@ -1,54 +1,57 @@
 package services
 
-import com.google.inject.Provides
-
-import play.api.libs.concurrent.ActorModule
-
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
-import akka.actor.typed.PostStop
-import akka.actor.typed.PreRestart
-
 import akka.actor.typed.scaladsl.Behaviors
+import play.api.Logger
 
-object ActorRefManager extends ActorModule {
-  type Message = ManagerCommand
+object ActorRefManager {
+  val logger: Logger = Logger("akka.actor.ActorRefManager")
 
   sealed trait ManagerCommand
-  case class Register(actorRef: ActorRef[String])   extends ManagerCommand
-  case class UnRegister(actorRef: ActorRef[String]) extends ManagerCommand
-  case class SendSignal(signal: String)             extends ManagerCommand
+  case class Register(actorRef: ActorRef[String])
+      extends ManagerCommand
+      with CborSerializable
+  case class UnRegister(actorRef: ActorRef[String])
+      extends ManagerCommand
+      with CborSerializable
+  case class SendSignal(signal: String)
+      extends ManagerCommand
+      with CborSerializable
 
-  @Provides
-  def apply(actors: Set[ActorRef[String]]): Behavior[ManagerCommand] =
-    Behaviors.setup { ct =>
-      println(s"setup ${ct.self}")
+  def apply(): Behavior[ManagerCommand] = {
+    def updated(actors: Set[ActorRef[String]]): Behavior[ManagerCommand] = {
+      Behaviors.setup { ctx =>
+        logger
+          .debug(s"${ctx.self} is started")
 
-      Behaviors
-        .receiveMessage[ManagerCommand](msg =>
-          msg match {
-            case Register(actorRef)   =>
-              println(s"receive a message to register $actorRef")
-              ActorRefManager(actors + actorRef)
-            case UnRegister(actorRef) =>
-              println(s"receive a message to unRegister $actorRef")
-              ActorRefManager(actors - actorRef)
-            case SendSignal(signal)   =>
-              println(s"receive a message to sendSignal to all ActorRef ${actors.toString}")
-              actors.foreach(_ ! signal)
-              Behaviors.same
-          }
-        )
-        // for debugging of manager actor lifecycle, there is no something to do
-        .receiveSignal { signal =>
-          signal match {
-            case (context, PreRestart) =>
-              println(s"PreRestart send to ${context.self}")
-              Behaviors.same
-            case (context, PostStop) =>
-              println(s"PostStop send to ${context.self}")
-              Behaviors.same
-          }
-        }
+        Behaviors
+          .receiveMessage[ManagerCommand](msg =>
+            msg match {
+              case Register(actorRef) =>
+                logger.debug(s"receive a message to register $actorRef")
+                updated(actors + actorRef)
+              case UnRegister(actorRef) =>
+                logger.debug(s"receive a message to unRegister $actorRef")
+                val updatedActors = actors - actorRef
+                updatedActors.size match {
+                  case 0 => {
+                    logger
+                      .debug(s"${ctx.self} is stopped")
+                    Behaviors.stopped
+                  }
+                  case _ => updated(updatedActors)
+                }
+              case SendSignal(signal) =>
+                logger.debug(
+                  s"receive a message to sendSignal to all ActorRef ${actors.toString}"
+                )
+                actors.foreach(_ ! signal)
+                Behaviors.same
+            }
+          )
+      }
     }
+    updated(Set.empty)
+  }
 }
