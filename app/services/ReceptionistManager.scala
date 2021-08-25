@@ -49,7 +49,7 @@ object ReceptionistManager extends ActorModule {
   ) extends ReceptionistManagerCommand
       with CborSerializable
 
-  val myServiceKey = ServiceKey[ActorRefManager.ManagerCommand]("test")
+  val myServiceKey = ServiceKey[String]("test")
 
   @Provides
   def apply(): Behavior[ReceptionistManagerCommand] = {
@@ -92,60 +92,55 @@ object ReceptionistManager extends ActorModule {
           case ResponseForRegister(sourceActorRef, listings) => {
             myServiceKey.Listing
               .unapply(listings)
-              .map(_.find(ref => !(ref.path.toString contains ("@"))))
+              .map(_.find(ref => (ref.path.toString contains (sourceActorRef.path.toString()))))
               .flatten match {
-              case Some(localActorRefManager) => {
+              case Some(ref) => {
                 logger
                   .debug(
-                    s"Response: Register ${sourceActorRef} in ${localActorRefManager}"
+                    s"Response: Already registered ${ref}"
                   )
-                localActorRefManager ! ActorRefManager.Register(sourceActorRef)
               }
               case None => {
                 logger
                   .debug(
-                    s"Response: Spawn Router and Register ${sourceActorRef}"
+                    s"Response: Register ${sourceActorRef}"
                   )
-                val actorRefManager =
-                  context.spawnAnonymous(ActorRefManager.apply())
                 context.system.receptionist ! Receptionist.Register(
                   myServiceKey,
-                  actorRefManager
+                  sourceActorRef
                 )
-                actorRefManager ! ActorRefManager.Register(sourceActorRef)
-
               }
             }
             Behaviors.same
           }
-
-          case UnRegisterSourceActorRef(sourceActorRef) => {
-            logger
-              .debug(s"UnRegister: ${sourceActorRef}")
-            context.system.receptionist ! Receptionist.Find(
-              myServiceKey,
-              adapterForUnRegister(sourceActorRef)
-            )
-            Behaviors.same
-          }
-          case ResponseForUnRegister(sourceActorRef, listings) => {
-            myServiceKey.Listing
-              .unapply(listings) match {
-              case Some(set) => {
-                set.foreach(actorRefManager => {
-                  logger
-                    .debug(
-                      s"Response: UnRegister ${sourceActorRef} in ${actorRefManager}"
-                    )
-                  actorRefManager ! ActorRefManager.UnRegister(
-                    sourceActorRef
-                  )
-                })
-              }
-              case None =>
-            }
-            Behaviors.same
-          }
+          // automatically unregistered ActorRef if actor is stopped
+          // case UnRegisterSourceActorRef(sourceActorRef) => {
+          //   logger
+          //     .debug(s"UnRegister: ${sourceActorRef}")
+          //   context.system.receptionist ! Receptionist.Find(
+          //     myServiceKey,
+          //     adapterForUnRegister(sourceActorRef)
+          //   )
+          //   Behaviors.same
+          // }
+          // case ResponseForUnRegister(sourceActorRef, listings) => {
+          //   myServiceKey.Listing
+          //     .unapply(listings) match {
+          //     case Some(set) => {
+          //       set.foreach(actorRefManager => {
+          //         logger
+          //           .debug(
+          //             s"Response: UnRegister ${sourceActorRef} in ${actorRefManager}"
+          //           )
+          //         actorRefManager ! ActorRefManager.UnRegister(
+          //           sourceActorRef
+          //         )
+          //       })
+          //     }
+          //     case None =>
+          //   }
+          //   Behaviors.same
+          // }
 
           case SendSignal(signal) => {
             logger
@@ -160,13 +155,12 @@ object ReceptionistManager extends ActorModule {
             myServiceKey.Listing
               .unapply(listings)
               .foreach(set => {
-                logger.debug(s"ActorRefManager: ${set.toString()}")
                 set.foreach(ref => {
                   logger
                     .debug(
                       s"Response: SendSignal ${signal} to ${ref}"
                     )
-                  ref ! ActorRefManager.SendSignal(signal)
+                  ref ! signal
                 })
               })
             Behaviors.same
