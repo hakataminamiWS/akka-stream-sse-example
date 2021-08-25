@@ -36,7 +36,7 @@ class ReceptionistManagerSpec
         )
 
         object ActorNothing {
-          def apply(): Behavior[String] = { Behaviors.same }
+          def apply(): Behavior[String] = { Behaviors.stopped }
         }
         val actorNothing: ActorRef[String] = testKit.spawn(ActorNothing.apply())
 

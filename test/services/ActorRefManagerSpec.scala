@@ -53,7 +53,7 @@ class ActorRefManagerSpec
         testKit.spawn(Behaviors.monitor(probe.ref, ActorRefManager.apply()))
 
       object ActorNothing {
-        def apply(): Behavior[String] = { Behaviors.same }
+        def apply(): Behavior[String] = { Behaviors.stopped }
       }
       val ref: ActorRef[String] = testKit.spawn(ActorNothing.apply())
 
